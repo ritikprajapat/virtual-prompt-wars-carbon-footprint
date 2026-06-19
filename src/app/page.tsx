@@ -1,65 +1,158 @@
-import Image from "next/image";
+"use client";
+import { useMemo } from "react";
+import { WeeklyBarChart, CategoryPieChart } from "@/components/charts/lazy";
+import { useCarbonStore } from "@/store/carbonStore";
+import { calcWeeklyStats, DAYS_PER_WEEK, NATIONAL_AVERAGE_WEEKLY_KG } from "@/lib/utils";
+import { bucketByDay, weekdayLabel } from "@/lib/buckets";
+import { calcCo2, findAction } from "@/lib/emissions";
+import { CATEGORIES } from "@/lib/categories";
+import { ScoreRing } from "@/components/ScoreRing";
+import type { Category } from "@/types";
 
-export default function Home() {
+const QUICK_ACTIONS: { category: Category; actionKey: string }[] = [
+  { category: "transport", actionKey: "car_10km" },
+  { category: "food", actionKey: "beef_meal" },
+  { category: "food", actionKey: "veggie_meal" },
+  { category: "energy", actionKey: "electricity_kwh" },
+  { category: "shopping", actionKey: "delivery_std" },
+];
+
+/** Dashboard route: weekly score ring, category breakdown, daily chart, and quick-log shortcuts. */
+export default function DashboardPage() {
+  const logEntries = useCarbonStore((s) => s.logEntries);
+  const addEntry = useCarbonStore((s) => s.addEntry);
+
+  const stats = useMemo(() => calcWeeklyStats(logEntries), [logEntries]);
+  const daily = useMemo(() => bucketByDay(logEntries, DAYS_PER_WEEK, weekdayLabel), [logEntries]);
+  const pieData = useMemo(
+    () =>
+      CATEGORIES.map((c) => ({ name: c.label, value: stats[c.key], color: c.color })).filter(
+        (d) => d.value > 0
+      ),
+    [stats]
+  );
+
+  const quickLog = (category: Category, actionKey: string) => {
+    const action = findAction(category, actionKey);
+    if (!action) return;
+    addEntry({
+      category,
+      actionKey: action.key,
+      actionName: action.name,
+      quantity: 1,
+      co2Total: calcCo2(action.co2PerUnit, 1),
+    });
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div>
+      <h1 className="page-title">Dashboard</h1>
+      <p className="page-sub">Your carbon footprint at a glance</p>
+
+      <section
+        aria-label="Weekly score and category breakdown"
+        style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 24 }}
+      >
+        <div
+          className="card"
+          style={{ display: "flex", alignItems: "center", gap: 24, flex: "1 1 320px" }}
+        >
+          <ScoreRing weeklyKg={stats.total} />
+          <div aria-live="polite">
+            <div style={{ fontSize: 13, color: "var(--text2)" }}>Total this week</div>
+            <div style={{ fontFamily: "var(--font-dm-mono)", fontSize: 28, color: "var(--text)" }}>
+              {stats.total} kg
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text3)", marginTop: 6 }}>
+              National avg: {NATIONAL_AVERAGE_WEEKLY_KG} kg / week
+            </div>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div
+          className="card"
+          role="region"
+          aria-label="Category breakdown chart"
+          style={{ flex: "1 1 320px", minWidth: 280 }}
+        >
+          <h2 className="section-title">Category breakdown</h2>
+          {pieData.length === 0 ? (
+            <p style={{ color: "var(--text3)", fontSize: 13 }}>
+              No data yet — log an activity to see your breakdown.
+            </p>
+          ) : (
+            <div
+              role="img"
+              aria-label={`Category breakdown: ${pieData
+                .map((d) => `${d.name} ${d.value} kg`)
+                .join(", ")}`}
+            >
+              <CategoryPieChart data={pieData} />
+            </div>
+          )}
         </div>
-      </main>
+      </section>
+
+      <section
+        aria-label="Category statistics"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+          gap: 16,
+          marginBottom: 24,
+        }}
+      >
+        {CATEGORIES.map((c) => (
+          <div key={c.key} className="card">
+            <div style={{ fontSize: 13, color: "var(--text2)" }}>{c.label}</div>
+            <div
+              style={{
+                fontFamily: "var(--font-dm-mono)",
+                fontSize: 24,
+                color: c.color,
+                marginTop: 4,
+              }}
+            >
+              {stats[c.key]} kg
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section
+        className="card"
+        role="region"
+        aria-label="Daily CO2 this week"
+        style={{ marginBottom: 24 }}
+      >
+        <h2 className="section-title">Daily CO₂ this week</h2>
+        <div
+          role="img"
+          aria-label={`Daily CO2 emissions: ${daily.map((d) => `${d.day} ${d.co2} kg`).join(", ")}`}
+        >
+          <WeeklyBarChart data={daily} />
+        </div>
+      </section>
+
+      <section className="card" role="region" aria-label="Quick log common actions">
+        <h2 className="section-title">Quick log</h2>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+          {QUICK_ACTIONS.map(({ category, actionKey }) => {
+            const action = findAction(category, actionKey);
+            if (!action) return null;
+            return (
+              <button
+                key={`${category}-${actionKey}`}
+                className="chip"
+                onClick={() => quickLog(category, actionKey)}
+                aria-label={`Quick log: ${action.name}, ${calcCo2(action.co2PerUnit, 1)} kg CO2`}
+              >
+                + {action.name}
+              </button>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }

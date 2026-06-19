@@ -1,0 +1,56 @@
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { ActivityLogger } from "@/components/ActivityLogger";
+import { useCarbonStore } from "@/store/carbonStore";
+
+describe("ActivityLogger", () => {
+  beforeEach(() => {
+    useCarbonStore.getState().clearAll();
+    vi.spyOn(global, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ tip: "Test tip" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("walks through the full log flow and calls addEntry", async () => {
+    const user = userEvent.setup();
+    render(<ActivityLogger />);
+
+    // Choose category
+    await user.click(screen.getByRole("radio", { name: /transport/i }));
+    const listbox = await screen.findByRole("listbox");
+    expect(listbox).toBeInTheDocument();
+
+    // Choose first action
+    const options = screen.getAllByRole("option");
+    await user.click(options[0]!);
+
+    // Quantity input appears
+    const qty = await screen.findByLabelText(/quantity in/i);
+    expect(qty).toBeInTheDocument();
+
+    // Type quantity → preview updates
+    await user.clear(qty);
+    await user.type(qty, "2");
+    expect(screen.getByText(/kg CO₂/i)).toBeInTheDocument();
+
+    // Submit
+    await user.click(screen.getByRole("button", { name: /log activity/i }));
+
+    await waitFor(() => {
+      expect(useCarbonStore.getState().logEntries.length).toBe(1);
+    });
+
+    // Tip panel shows
+    await waitFor(() => {
+      expect(screen.getByText("Test tip")).toBeInTheDocument();
+    });
+    expect(global.fetch).toHaveBeenCalledWith("/api/tip", expect.any(Object));
+  });
+});
