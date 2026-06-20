@@ -1,7 +1,6 @@
 "use client";
-import { useRef, type KeyboardEvent } from "react";
 import { CATEGORIES } from "@/lib/categories";
-import { onActivateKey, nextRovingIndex } from "@/lib/a11y";
+import { useRovingSelection } from "@/lib/useRovingSelection";
 import type { Category } from "@/types";
 
 interface CategoryPickerProps {
@@ -15,23 +14,11 @@ interface CategoryPickerProps {
  * move focus and selection between options.
  */
 export function CategoryPicker({ selected, onSelect }: CategoryPickerProps) {
-  const refs = useRef<(HTMLDivElement | null)[]>([]);
   const selectedIndex = CATEGORIES.findIndex((c) => c.key === selected);
   const activeIndex = selectedIndex === -1 ? 0 : selectedIndex;
-
-  const handleKeyDown = (event: KeyboardEvent, index: number) => {
-    const next = nextRovingIndex(event.key, index, CATEGORIES.length);
-    if (next !== null) {
-      event.preventDefault();
-      const category = CATEGORIES[next];
-      if (category) {
-        onSelect(category.key);
-        refs.current[next]?.focus();
-      }
-      return;
-    }
-    onActivateKey(event, () => onSelect(CATEGORIES[index]!.key));
-  };
+  const { setRef, handleKeyDown } = useRovingSelection<HTMLDivElement>(CATEGORIES.length, (i) =>
+    onSelect(CATEGORIES[i]!.key)
+  );
 
   return (
     <div
@@ -48,9 +35,7 @@ export function CategoryPicker({ selected, onSelect }: CategoryPickerProps) {
         return (
           <div
             key={c.key}
-            ref={(el) => {
-              refs.current[i] = el;
-            }}
+            ref={setRef(i)}
             role="radio"
             aria-checked={isSelected}
             aria-label={c.label}

@@ -4,6 +4,7 @@ import { TrendAreaChart } from "@/components/charts/lazy";
 import { useCarbonStore } from "@/store/carbonStore";
 import { buildLogSummary } from "@/lib/utils";
 import { bucketByDay, monthDayLabel } from "@/lib/buckets";
+import { postJson } from "@/lib/apiClient";
 import { SIM_SCENARIOS } from "@/lib/emissions";
 import type { SimScenario } from "@/types";
 
@@ -23,17 +24,14 @@ export default function InsightsPage() {
     setLoading(true);
     setAnalysis(null);
     try {
-      const res = await fetch("/api/insights", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ summary: buildLogSummary(logEntries) }),
+      const data = await postJson<{ insights?: string }>("/api/insights", {
+        summary: buildLogSummary(logEntries),
       });
-      if (res.ok) {
-        const data = (await res.json()) as { insights?: string };
-        setAnalysis(data.insights ?? null);
-      } else {
-        setAnalysis("Insights service is busy right now. Please try again shortly.");
-      }
+      setAnalysis(
+        data
+          ? (data.insights ?? null)
+          : "Insights service is busy right now. Please try again shortly."
+      );
     } catch {
       setAnalysis("Insights service is unavailable right now.");
     } finally {

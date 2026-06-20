@@ -2,8 +2,9 @@
 import { useMemo, useState } from "react";
 import { useCarbonStore } from "@/store/carbonStore";
 import { GoalSchema } from "@/lib/validators";
-import { calcWeeklyStats, toMonthlyEstimate } from "@/lib/utils";
-import { CATEGORY_KEYS, FOCUS_OPTIONS } from "@/lib/categories";
+import { calcWeeklyStats, toMonthlyEstimate, topCategory } from "@/lib/utils";
+import { FOCUS_OPTIONS } from "@/lib/categories";
+import { postJson } from "@/lib/apiClient";
 import { GoalCard } from "@/components/GoalCard";
 import { ChallengeList } from "@/components/ChallengeList";
 import type { Category } from "@/types";
@@ -45,21 +46,16 @@ export default function GoalsPage() {
     });
 
     try {
-      const topCategory = [...CATEGORY_KEYS].reduce((a, b) => (stats[a] >= stats[b] ? a : b));
-      const res = await fetch("/api/goal-recalibrate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const data = await postJson<{ suggestedKg?: number; reason?: string }>(
+        "/api/goal-recalibrate",
+        {
           currentKg: monthlyEstimate,
           targetKg: result.data.targetKg,
-          topCategory,
-        }),
-      });
-      if (res.ok) {
-        const data = (await res.json()) as { suggestedKg?: number; reason?: string };
-        if (data.suggestedKg && data.reason) {
-          setSuggestion(`AI suggests ${data.suggestedKg} kg: ${data.reason}`);
+          topCategory: topCategory(stats),
         }
+      );
+      if (data?.suggestedKg && data.reason) {
+        setSuggestion(`AI suggests ${data.suggestedKg} kg: ${data.reason}`);
       }
     } catch {
       // Non-blocking: AI suggestion is optional.

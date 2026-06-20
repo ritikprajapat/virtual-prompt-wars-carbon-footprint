@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useCarbonStore } from "@/store/carbonStore";
 import { calcCo2 } from "@/lib/emissions";
 import { startOfTodayMs } from "@/lib/utils";
+import { postJson } from "@/lib/apiClient";
 import { CategoryPicker } from "@/components/logger/CategoryPicker";
 import { ActionPicker } from "@/components/logger/ActionPicker";
 import { QuantitySubmit } from "@/components/logger/QuantitySubmit";
@@ -58,17 +59,15 @@ export function ActivityLogger() {
     setLoadingTip(true);
     setTip(null);
     try {
-      const res = await fetch("/api/tip", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actionName: action.name, quantity, co2Total, category }),
+      const data = await postJson<{ tip?: string }>("/api/tip", {
+        actionName: action.name,
+        quantity,
+        co2Total,
+        category,
       });
-      if (res.ok) {
-        const data = (await res.json()) as { tip?: string };
-        setTip(data.tip ?? null);
-      } else {
-        setTip("Logged! Tip service is busy right now — try again shortly.");
-      }
+      setTip(
+        data ? (data.tip ?? null) : "Logged! Tip service is busy right now — try again shortly."
+      );
     } catch {
       setTip("Logged! Tip service is unavailable right now.");
     } finally {

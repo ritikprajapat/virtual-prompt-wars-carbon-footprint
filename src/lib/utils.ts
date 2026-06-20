@@ -1,4 +1,5 @@
-import type { LogEntry, WeeklyStats } from "@/types";
+import type { Category, LogEntry, WeeklyStats } from "@/types";
+import { CATEGORY_KEYS } from "@/lib/categories";
 
 const NATIONAL_AVERAGE_WEEKLY_KG = 101;
 
@@ -75,6 +76,16 @@ export function computeGrade(weeklyKg: number): string {
   if (ratio <= 0.95) return "C+";
   if (ratio <= 1.1) return "C";
   return "D";
+}
+
+/**
+ * Determine the category with the highest weekly emissions. Ties resolve to the
+ * earliest category in display order.
+ * @param stats - per-category weekly totals
+ * @returns the dominant category key
+ */
+export function topCategory(stats: WeeklyStats): Category {
+  return [...CATEGORY_KEYS].reduce((a, b) => (stats[a] >= stats[b] ? a : b));
 }
 
 /**

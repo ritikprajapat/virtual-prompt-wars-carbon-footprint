@@ -1,7 +1,6 @@
 "use client";
-import { useRef, type KeyboardEvent } from "react";
 import { EMISSION_ACTIONS } from "@/lib/emissions";
-import { onActivateKey, nextRovingIndex } from "@/lib/a11y";
+import { useRovingSelection } from "@/lib/useRovingSelection";
 import type { ActionItem, Category } from "@/types";
 
 interface ActionPickerProps {
@@ -17,23 +16,11 @@ interface ActionPickerProps {
  */
 export function ActionPicker({ category, selectedKey, onSelect }: ActionPickerProps) {
   const actions = EMISSION_ACTIONS[category];
-  const refs = useRef<(HTMLDivElement | null)[]>([]);
   const selectedIndex = actions.findIndex((a) => a.key === selectedKey);
   const activeIndex = selectedIndex === -1 ? 0 : selectedIndex;
-
-  const handleKeyDown = (event: KeyboardEvent, index: number) => {
-    const next = nextRovingIndex(event.key, index, actions.length);
-    if (next !== null) {
-      event.preventDefault();
-      const action = actions[next];
-      if (action) {
-        onSelect(action);
-        refs.current[next]?.focus();
-      }
-      return;
-    }
-    onActivateKey(event, () => onSelect(actions[index]!));
-  };
+  const { setRef, handleKeyDown } = useRovingSelection<HTMLDivElement>(actions.length, (i) =>
+    onSelect(actions[i]!)
+  );
 
   return (
     <ul
@@ -46,9 +33,7 @@ export function ActionPicker({ category, selectedKey, onSelect }: ActionPickerPr
         return (
           <li key={a.key} role="none">
             <div
-              ref={(el) => {
-                refs.current[i] = el;
-              }}
+              ref={setRef(i)}
               role="option"
               aria-selected={isSelected}
               tabIndex={i === activeIndex ? 0 : -1}
