@@ -86,6 +86,34 @@ describe("createPostHandler", () => {
       handle: async () => ({ ok: true }),
     });
     await POST(makeReq(JSON.stringify({ name: "x" })));
-    expect(mockRate).toHaveBeenCalledWith("test:9.9.9.9", 1000);
+    expect(mockRate).toHaveBeenCalledWith("test:9.9.9.9", 1000, 1);
+  });
+
+  it("forwards a configured burst capacity to the rate limiter", async () => {
+    const POST = createPostHandler({
+      rateLimitKey: "test",
+      windowMs: 1000,
+      burst: 5,
+      schema,
+      handle: async () => ({ ok: true }),
+    });
+    await POST(makeReq(JSON.stringify({ name: "x" })));
+    expect(mockRate).toHaveBeenCalledWith("test:9.9.9.9", 1000, 5);
+  });
+
+  it("falls back to an 'unknown' IP when x-forwarded-for is absent", async () => {
+    const POST = createPostHandler({
+      rateLimitKey: "test",
+      windowMs: 1000,
+      schema,
+      handle: async () => ({ ok: true }),
+    });
+    const req = new Request("http://localhost/api", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "x" }),
+    }) as unknown as NextRequest;
+    await POST(req);
+    expect(mockRate).toHaveBeenCalledWith("test:unknown", 1000, 1);
   });
 });

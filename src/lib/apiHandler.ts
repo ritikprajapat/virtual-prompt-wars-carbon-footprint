@@ -9,8 +9,13 @@ import { checkRateLimit } from "@/lib/rateLimiter";
 export interface PostHandlerConfig<T> {
   /** Rate-limit bucket prefix, combined with the caller IP (e.g. `"tip"`). */
   rateLimitKey: string;
-  /** Minimum spacing between allowed requests for this endpoint, in ms. */
+  /** Sustained spacing between allowed requests for this endpoint, in ms. */
   windowMs: number;
+  /**
+   * Maximum burst of back-to-back requests tolerated before throttling kicks
+   * in (token-bucket capacity). Defaults to `1` — strict one-per-`windowMs`.
+   */
+  burst?: number;
   /** Schema the request body must satisfy. */
   schema: z.ZodType<T>;
   /**
@@ -32,12 +37,13 @@ export interface PostHandlerConfig<T> {
 export function createPostHandler<T>({
   rateLimitKey,
   windowMs,
+  burst = 1,
   schema,
   handle,
 }: PostHandlerConfig<T>) {
   return async function POST(req: NextRequest): Promise<NextResponse> {
     const ip = req.headers.get("x-forwarded-for") ?? "unknown";
-    if (!checkRateLimit(`${rateLimitKey}:${ip}`, windowMs)) {
+    if (!checkRateLimit(`${rateLimitKey}:${ip}`, windowMs, burst)) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 

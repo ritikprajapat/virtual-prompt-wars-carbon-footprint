@@ -42,3 +42,17 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env.local
+
+# editors / IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+
+# logs
+logs
+*.log
+
+# os
+Thumbs.db

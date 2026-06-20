@@ -54,6 +54,12 @@ describe("carbonStore", () => {
     expect(useCarbonStore.getState().challenges.find((c) => c.id === id)!.completed).toBe(false);
   });
 
+  it("toggleChallenge is a no-op for an unknown id", () => {
+    const before = useCarbonStore.getState().challenges.map((c) => c.completed);
+    useCarbonStore.getState().toggleChallenge("does-not-exist");
+    expect(useCarbonStore.getState().challenges.map((c) => c.completed)).toEqual(before);
+  });
+
   it("clearAll resets entries, goals, and challenges", () => {
     const s = useCarbonStore.getState();
     s.addEntry({ category: "energy", actionKey: "x", actionName: "X", quantity: 1, co2Total: 1 });

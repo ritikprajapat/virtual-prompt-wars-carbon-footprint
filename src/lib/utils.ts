@@ -1,5 +1,5 @@
 import type { Category, LogEntry, WeeklyStats } from "@/types";
-import { CATEGORY_KEYS } from "@/lib/categories";
+import { CATEGORY_KEYS, CATEGORY_LABELS } from "@/lib/categories";
 
 const NATIONAL_AVERAGE_WEEKLY_KG = 101;
 
@@ -31,27 +31,48 @@ export function toMonthlyEstimate(weeklyKg: number): number {
 }
 
 /**
- * Calculate total CO₂ per category for the last 7 days.
+ * Select the log entries that fall within the trailing `days` window.
  *
- * Sums are accumulated at full precision and rounded once at the end so that
- * per-entry rounding cannot compound into a drifting total.
+ * Single responsibility: time-window selection (no aggregation). Reused wherever
+ * a recent-entries slice is needed, so the cutoff math lives in one place.
+ * @param entries - all log entries, any age
+ * @param days - size of the trailing window in days
+ * @returns the entries newer than the cutoff
+ */
+export function filterWithinDays(entries: LogEntry[], days: number): LogEntry[] {
+  const cutoff = Date.now() - days * MS_PER_DAY;
+  return entries.filter((e) => new Date(e.timestamp).getTime() > cutoff);
+}
+
+/**
+ * Sum CO₂ per category (and overall) for the given entries.
+ *
+ * Single responsibility: aggregation only — it does not select a time window.
+ * Category-agnostic: it iterates {@link CATEGORY_KEYS}, so a new category needs
+ * no change here (open for extension). Sums accumulate at full precision and are
+ * rounded once at the end so per-entry rounding cannot compound.
+ * @param entries - the entries to aggregate
+ * @returns per-category and total kg CO₂e
+ */
+export function aggregateByCategory(entries: LogEntry[]): WeeklyStats {
+  const stats: WeeklyStats = { transport: 0, food: 0, energy: 0, shopping: 0, total: 0 };
+  for (const e of entries) {
+    stats[e.category] += e.co2Total;
+    stats.total += e.co2Total;
+  }
+  for (const key of CATEGORY_KEYS) stats[key] = round2(stats[key]);
+  stats.total = round2(stats.total);
+  return stats;
+}
+
+/**
+ * Calculate total CO₂ per category for the last 7 days. Composition of
+ * {@link filterWithinDays} and {@link aggregateByCategory}.
  * @param entries - all log entries (any age; older than 7 days are ignored)
  * @returns per-category and total kg CO₂e for the trailing week
  */
 export function calcWeeklyStats(entries: LogEntry[]): WeeklyStats {
-  const oneWeekAgo = Date.now() - DAYS_PER_WEEK * MS_PER_DAY;
-  const recent = entries.filter((e) => new Date(e.timestamp).getTime() > oneWeekAgo);
-  const stats: WeeklyStats = { transport: 0, food: 0, energy: 0, shopping: 0, total: 0 };
-  for (const e of recent) {
-    stats[e.category] += e.co2Total;
-    stats.total += e.co2Total;
-  }
-  stats.transport = round2(stats.transport);
-  stats.food = round2(stats.food);
-  stats.energy = round2(stats.energy);
-  stats.shopping = round2(stats.shopping);
-  stats.total = round2(stats.total);
-  return stats;
+  return aggregateByCategory(filterWithinDays(entries, DAYS_PER_WEEK));
 }
 
 /**
@@ -89,15 +110,25 @@ export function topCategory(stats: WeeklyStats): Category {
 }
 
 /**
- * Build a plain-text summary of recent log entries for AI context.
+ * Format a stats object as plain-text prompt context.
+ *
+ * Single responsibility: presentation only (no computation). Category-driven via
+ * {@link CATEGORY_LABELS}, so labels never drift from the rest of the UI.
+ * @param stats - per-category weekly totals
+ * @param entryCount - number of entries the stats were derived from
+ * @returns a single-line summary string
+ */
+export function formatStatsSummary(stats: WeeklyStats, entryCount: number): string {
+  const parts = CATEGORY_KEYS.map((key) => `${CATEGORY_LABELS[key]}: ${stats[key]} kg`);
+  return `${parts.join(", ")}. Total entries: ${entryCount}.`;
+}
+
+/**
+ * Build a plain-text summary of recent log entries for AI context. Composition
+ * of {@link calcWeeklyStats} and {@link formatStatsSummary}.
  */
 export function buildLogSummary(entries: LogEntry[]): string {
-  const stats = calcWeeklyStats(entries);
-  return (
-    `Transport: ${stats.transport} kg, Food: ${stats.food} kg, ` +
-    `Energy: ${stats.energy} kg, Shopping: ${stats.shopping} kg. ` +
-    `Total entries: ${entries.length}.`
-  );
+  return formatStatsSummary(calcWeeklyStats(entries), entries.length);
 }
 
 /**

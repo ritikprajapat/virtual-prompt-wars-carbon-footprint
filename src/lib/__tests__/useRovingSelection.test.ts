@@ -37,6 +37,13 @@ describe("useRovingSelection", () => {
     expect(onSelect).toHaveBeenCalledWith(2);
   });
 
+  it("jumps to the first index on Home", () => {
+    const onSelect = vi.fn();
+    const { result } = renderHook(() => useRovingSelection<HTMLDivElement>(4, onSelect));
+    result.current.handleKeyDown(keyEvent("Home"), 3);
+    expect(onSelect).toHaveBeenCalledWith(0);
+  });
+
   it("ignores non-navigation, non-activation keys", () => {
     const onSelect = vi.fn();
     const { result } = renderHook(() => useRovingSelection<HTMLDivElement>(3, onSelect));

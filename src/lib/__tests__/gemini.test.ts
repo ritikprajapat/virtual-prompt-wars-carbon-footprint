@@ -63,6 +63,15 @@ describe("callGemini", () => {
     await assertion;
   });
 
+  it("given fetch rejects with a non-Error value, when called, then it wraps and rethrows it", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(global, "fetch").mockRejectedValue("network down");
+    const promise = callGemini("prompt");
+    const assertion = expect(promise).rejects.toThrow(/network down/);
+    await vi.runAllTimersAsync();
+    await assertion;
+  });
+
   it("given an empty candidate body, when called, then it throws", async () => {
     vi.useFakeTimers();
     vi.spyOn(global, "fetch").mockImplementation(() => Promise.resolve(okResponse("")));

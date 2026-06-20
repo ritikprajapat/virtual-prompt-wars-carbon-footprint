@@ -27,6 +27,11 @@ export const CATEGORIES: readonly CategoryMeta[] = [
 /** All category keys, in display order. */
 export const CATEGORY_KEYS: readonly Category[] = CATEGORIES.map((c) => c.key);
 
+/** Category key → display label, derived from {@link CATEGORIES}. */
+export const CATEGORY_LABELS: Readonly<Record<Category, string>> = Object.fromEntries(
+  CATEGORIES.map((c) => [c.key, c.label])
+) as Record<Category, string>;
+
 /**
  * Focus-area options for goal setting: every category plus an "all" aggregate.
  */

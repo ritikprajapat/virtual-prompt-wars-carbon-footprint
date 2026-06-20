@@ -47,6 +47,14 @@ grade (A+ → D) in [`computeGrade`](src/lib/utils.ts).
 
 ## 3. Architecture
 
+In-depth design docs live in [`docs/`](docs/):
+[architecture](docs/architecture.md) ·
+[security](docs/security.md) ·
+[testing](docs/testing.md) ·
+[accessibility](docs/accessibility.md) ·
+[performance](docs/performance.md) ·
+[ai-design](docs/ai-design.md).
+
 ```
 carbontrace/
 ├── src/
@@ -138,17 +146,20 @@ Get a free Gemini API key at <https://aistudio.google.com/app/apikey>.
 
 ## 7. Test instructions
 
+> Requires **Node ≥ 20.19** (see `.nvmrc`; run `nvm use`). Older Node cannot
+> `require()` an ESM-only dependency pulled in by jsdom and the suite won't start.
+
 ```bash
-npm test                 # unit + component tests (Vitest) — 69 tests
-npm run test:coverage    # with coverage report
+npm test                 # unit + component + api tests (Vitest) — 155 tests
+npm run test:coverage    # with coverage report (thresholds: 98/99/88/98)
 npm run test:e2e         # Playwright E2E + axe-core accessibility (starts dev server)
 npm run type-check       # tsc --noEmit (strict, noUncheckedIndexedAccess)
 npm run lint             # eslint
 ```
 
-All 69 unit/component tests (≥85% coverage thresholds enforced) and all 6 E2E tests
-(including 4 axe-core accessibility scans covering every page) pass with **zero
-accessibility violations**.
+All 155 unit/component/API tests (statements/lines/functions/branches thresholds of
+98/99/88/98 enforced) and the E2E suite (including axe-core accessibility scans
+covering every page) pass with **zero accessibility violations**.
 
 ---
 
