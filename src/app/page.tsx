@@ -51,20 +51,36 @@ export default function DashboardPage() {
 
       <section
         aria-label="Weekly score and category breakdown"
-        style={{ display: "flex", gap: 24, flexWrap: "wrap", marginBottom: 24 }}
+        style={{ display: "flex", gap: 20, flexWrap: "wrap", marginBottom: 20 }}
       >
         <div
           className="card"
-          style={{ display: "flex", alignItems: "center", gap: 24, flex: "1 1 320px" }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 28,
+            flex: "1 1 320px",
+            flexWrap: "wrap",
+          }}
         >
           <ScoreRing weeklyKg={stats.total} />
           <div aria-live="polite">
-            <div style={{ fontSize: 13, color: "var(--text2)" }}>Total this week</div>
-            <div style={{ fontFamily: "var(--font-dm-mono)", fontSize: 28, color: "var(--text)" }}>
-              {stats.total} kg
+            <div className="section-title" style={{ marginBottom: 8 }}>
+              Total this week
             </div>
-            <div style={{ fontSize: 12, color: "var(--text3)", marginTop: 6 }}>
-              National avg: {NATIONAL_AVERAGE_WEEKLY_KG} kg / week
+            <div
+              className="mono"
+              style={{ fontSize: 34, fontWeight: 500, color: "var(--text)", lineHeight: 1 }}
+            >
+              {stats.total}
+              <span style={{ fontSize: 16, color: "var(--text3)", marginLeft: 6 }}>kg CO₂</span>
+            </div>
+            <div style={{ fontSize: 12.5, color: "var(--text3)", marginTop: 10 }}>
+              National avg:{" "}
+              <span className="mono" style={{ color: "var(--text2)" }}>
+                {NATIONAL_AVERAGE_WEEKLY_KG} kg
+              </span>{" "}
+              / week
             </div>
           </div>
         </div>
@@ -97,23 +113,44 @@ export default function DashboardPage() {
         aria-label="Category statistics"
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-          gap: 16,
-          marginBottom: 24,
+          gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+          gap: 14,
+          marginBottom: 20,
         }}
       >
         {CATEGORIES.map((c) => (
-          <div key={c.key} className="card">
-            <div style={{ fontSize: 13, color: "var(--text2)" }}>{c.label}</div>
+          <div
+            key={c.key}
+            className="card"
+            style={{ padding: 18, borderTop: `2px solid ${c.color}` }}
+          >
             <div
               style={{
-                fontFamily: "var(--font-dm-mono)",
-                fontSize: 24,
-                color: c.color,
-                marginTop: 4,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 13,
+                color: "var(--text2)",
               }}
             >
-              {stats[c.key]} kg
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: c.color,
+                  flexShrink: 0,
+                }}
+              />
+              {c.label}
+            </div>
+            <div
+              className="mono"
+              style={{ fontSize: 26, fontWeight: 500, color: "var(--text)", marginTop: 8 }}
+            >
+              {stats[c.key]}
+              <span style={{ fontSize: 13, color: "var(--text3)", marginLeft: 4 }}>kg</span>
             </div>
           </div>
         ))}
